@@ -53,37 +53,6 @@ You ──► Opus (lead) ──► Plan ──► Spawn agents ──► Verify
 
 Agents are spawned via `claude-glm` — a wrapper that redirects Claude Code to the Z.ai GLM API, where agents run on `glm-4.7`.
 
-## What's Included
-
-```
-your-project/
-├── CLAUDE.md                          Workflow instructions (auto-loaded by Claude Code)
-├── .claude/
-│   ├── agents/                        110 specialized agent definitions
-│   │   ├── code-reviewer.md
-│   │   ├── security-reviewer.md
-│   │   ├── python-pro.md
-│   │   ├── typescript-pro.md
-│   │   ├── architect.md
-│   │   ├── web-searcher.md
-│   │   └── ... (105 more)
-│   ├── tools/
-│   │   ├── spawn-glm.sh              Spawn a GLM agent in background
-│   │   ├── wait-glm.sh               Wait for agents with progress monitoring
-│   │   ├── memory.sh / memory.bat    Persistent memory across sessions
-│   │   ├── memory.py                 Memory backend (auto-installed via uv)
-│   │   ├── web_search.sh / .bat      Deep web search (50+ results per query)
-│   │   ├── web_research.py           Search backend (auto-installed via uv)
-│   │   └── completions/              Shell completions for memory tool
-│   └── templates/
-│       ├── quality-rules-review.txt   Boilerplate for review agents
-│       ├── quality-rules-code.txt     Boilerplate for code agents
-│       ├── severity-guide.txt         CRITICAL/HIGH/MEDIUM/LOW definitions
-│       ├── coordination-review.txt    Report format for reviews
-│       └── coordination-code.txt      Report format for code changes
-└── tmp/                               Agent working directory (gitignored)
-```
-
 ## Components
 
 ### Orchestration (Opus-GLM Core)
