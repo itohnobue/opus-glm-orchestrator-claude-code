@@ -104,7 +104,7 @@ Blocks until all finish (Bash timeout: 600000). Do NOT use bare `wait` or `sleep
 
 ### Workflow
 
-The lead designs the workflow. Typical flow: plan → for each stage: prepare → spawn → verify → synthesize → deliver. The lead decides what stages are needed and in what order.
+The lead designs the workflow. Typical flow: plan → for each stage: prepare → spawn → verify → synthesize → deliver. **Stages may be iterative (see Iterative Convergence).** The lead decides what stages are needed and in what order.
 
 #### Planning
 
@@ -112,13 +112,18 @@ Research enough to write well-scoped prompts — skim files (structure, function
 ```
 Plan: [N stages, M total agents]
   Stage 1: [purpose] — [agents] → delivers [what]
-  Stage 2: [purpose] — uses Stage 1 output → delivers [what]
+  Stage 2: [purpose] — [agents] → delivers [what] [iterative] (discretionary)
+  Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
 ```
+Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
+
 Write full plan to `tmp/glm-plan.md`. Checkpoint.
 
 Single-stage when all agents can work independently. Multi-stage when later work depends on earlier results or agents would need 30+ turns.
 
-**Session start:** Clean stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md`
+**Session start:** Clean stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md`
+
+**Scoping pass:** When the change scope is unclear, the lead may spawn 1-2 lightweight agents before writing the formal plan. Scoping agents use `-scope` suffix (e.g., `s1-scope-review`). Their findings inform the plan but MUST be verified before any fixes are applied (see Verification hard rules). Write the formal plan after the scoping pass completes.
 
 **Session boundaries:** If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
 
@@ -170,6 +175,8 @@ The most critical step. **Every finding must be verified — no exceptions.**
 - 100% labeled before proceeding — no unlabeled findings
 - If >30% rejected → flag report as unreliable
 - After compaction during verification: first action = read checklist, continue from first unlabeled row
+- No fixes without verification — even from scoping passes or informal agent runs. Every finding the lead acts on must have a Read-backed label first
+- Valid labels are ONLY: VERIFIED / REJECTED (reason) / DOWNGRADED (correct severity) / UNABLE TO VERIFY. No other labels (e.g., "PLAUSIBLE", "NOT VERIFIED") are permitted
 
 **d) Fix ALL verified actionable findings** regardless of severity. Deduplicate across agents. Don't defer fixable issues.
 
@@ -181,13 +188,36 @@ The most critical step. **Every finding must be verified — no exceptions.**
 4. Next stage prompts include synthesis as `PRIOR CONTEXT:` section
 5. Never re-do verified work unless evidence shows it was wrong
 
+**Iterative stages:** Between iterations, follow the Iterative Convergence protocol below — skip steps 1-5 until convergence is reached. On convergence, write final stage synthesis (step 1) and resume normal between-stages flow (steps 2-5).
+
+#### Iterative Convergence
+
+Some stages benefit from repeated runs until agents stop producing new meaningful output. What counts as "new output" depends on the stage purpose — new problems (audit), new information (research), new improvements (analysis), new risks (security), etc. The lead judges.
+
+**When mandatory:** Final/critical stages — production checks, final audits, final quality gates. These MUST iterate to convergence.
+
+**When lead decides:** Research, discovery, security audits, or any stage where missing something has high cost. The lead evaluates whether the domain and stakes warrant iteration.
+
+**Usually not needed:** Implementation, simple context-gathering, one-off transformations.
+
+**Mechanics:**
+1. Each iteration = full prepare → spawn → verify cycle
+2. After verification, assess: was new meaningful output produced?
+   - **Yes** → write iteration synthesis to `tmp/stage-N-iter-K-synthesis.md`, prepare next iteration with cumulative context from all prior iterations
+   - **No** → increment empty counter
+3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
+4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful
+5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
+6. Lead sets max iterations per stage (default 5). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
+7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
+
 #### Delivery
 
 After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
 - **Code changes:** run build + tests as final smoke test (if failures, spawn fix-agent)
 - **Research/analysis:** synthesize into clear summary
-- Write `tmp/session-summary.md`: task goal, stages executed, total agents, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
+- Write `tmp/session-summary.md`: task goal, stages executed, total agents, iterations per iterative stage, verification stats, key decisions, phase durations (planning, preparation, execution/wait, verification, synthesis)
 - Cleanup: `rm -f tmp/*-prompt.txt`. Keep logs, reports, summary
 - Save workflow lessons to knowledge if applicable
 
@@ -209,8 +239,8 @@ PROJECT: {working directory and project description}
 ENVIRONMENT (code tasks only):
 {Runtime, test command, lint command}
 
-PRIOR CONTEXT (stage 2+ only):
-{Contents of tmp/stage-N-synthesis.md}
+PRIOR CONTEXT (stage 2+ or iteration 2+):
+{Contents of tmp/stage-N-synthesis.md OR cumulative tmp/stage-N-iter-*-synthesis.md for iterations}
 
 YOUR TASK: {KEY FILES, CONTEXT, SCOPE, MUST ANSWER questions}
 
@@ -244,7 +274,7 @@ memory.sh session add context "CHECKPOINT: [task] | DONE: [steps] | NEXT: [remai
    - Verification: through #### Delivery + ### Error Handling + ### Rules — skip prompt template/quality rules
    - Synthesis/delivery: through #### Delivery + ### Checkpoints through ### Rules — skip prompt template/quality rules
 3. Read `tmp/glm-plan.md` — restore current plan
-4. Read the latest `tmp/stage-N-checklist.md` or `tmp/stage-N-synthesis.md` — restore verification/stage state
+4. Read the latest `tmp/stage-N-checklist.md`, `tmp/stage-N-iter-K-synthesis.md`, or `tmp/stage-N-synthesis.md` — restore verification/iteration/stage state
 5. Only then resume work
 
 Do not rely on continuation summary alone. Do not skip step 2 — this is the #1 cause of workflow deviation after compaction.
@@ -255,6 +285,7 @@ Do not rely on continuation summary alone. Do not skip step 2 — this is the #1
 | Agents prepared | List prompts → spawn |
 | Agents spawned | Check PIDs/reports → verify or re-wait |
 | Verifying stage N | Read `tmp/stage-N-checklist.md` → first unlabeled row |
+| Iterating stage N, iter K | Read `tmp/stage-N-iter-K-synthesis.md` + cumulative context → prepare next iteration |
 | Stage N done | Read synthesis + plan → next stage |
 
 ### Session Continuation
@@ -279,10 +310,11 @@ For tasks exceeding a single session:
 | Zero issues on substantial task | Spot-check 2-3 key areas |
 | Incorrect edits | Revert and fix directly |
 | 2+ agents fail same env error | STOP respawning. Diagnose environment first |
+| Iteration cap hit without convergence | Synthesize all iterations, note "convergence not reached" in delivery, proceed |
 
 ### Rules
 
-**Limits:** Max {{MAX_AGENTS}} agents per stage. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file per stage (read overlap OK). Balance workload — each agent should cover roughly equal scope.
+**Limits:** Max {{MAX_AGENTS}} agents per stage (per iteration for iterative stages). Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file per iteration (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
 
 **Prompts:** Include task-relevant sections of agent `.md` — skip sections that don't help with the specific task. Always keep: frontmatter, identity/focus sections, approach/workflow, safety patterns, common pitfalls. Skip when irrelevant: CI/CD, observability/logging, essential tools, dependency management, documentation standards, output sections, diagnostic/analysis commands. Lead decides per-task — if a section wouldn't help the agent do THIS task, skip it. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.claude/templates/`. Agents don't load CLAUDE.md — all context must be in prompt.
 
