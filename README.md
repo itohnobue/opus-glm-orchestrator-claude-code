@@ -9,7 +9,7 @@ Give Opus a task. It breaks it into subtasks, spawns specialized agents (code re
 ### macOS / Linux
 
 ```bash
-git clone https://git.aoizora.ru/nobu/opus-glm.git
+git clone https://github.com/itohnobue/opus-glm
 cd opus-glm
 ./install.sh /path/to/your/project
 ```
@@ -17,7 +17,7 @@ cd opus-glm
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://git.aoizora.ru/nobu/opus-glm.git
+git clone https://github.com/itohnobue/opus-glm
 cd opus-glm
 .\install.ps1 C:\path\to\your\project
 ```

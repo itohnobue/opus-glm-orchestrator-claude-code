@@ -9,7 +9,7 @@ Claude-GLM is a lightweight wrapper that redirects Claude Code to the Z.ai GLM A
 ### macOS / Linux
 
 ```bash
-git clone https://git.aoizora.ru/nobu/claude-glm.git
+git clone https://github.com/itohnobue/claude-glm
 cd claude-glm
 ./install.sh
 ```
@@ -17,7 +17,7 @@ cd claude-glm
 ### Windows (PowerShell)
 
 ```powershell
-git clone https://git.aoizora.ru/nobu/claude-glm.git
+git clone https://github.com/itohnobue/claude-glm
 cd claude-glm
 .\install.ps1
 ```
