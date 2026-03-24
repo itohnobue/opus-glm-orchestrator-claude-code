@@ -336,7 +336,7 @@ For tasks exceeding a single session:
 
 **Limits:** Max 3 agents per stage (per iteration for iterative stages). Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
 
-**Prompts:** Include task-relevant sections of agent `.md` — skip sections that don't help with the specific task. Always keep: frontmatter, identity/focus sections, approach/workflow, safety patterns, common pitfalls. Skip when irrelevant: CI/CD, observability/logging, essential tools, dependency management, documentation standards, output sections, diagnostic/analysis commands. Lead decides per-task — if a section wouldn't help the agent do THIS task, skip it. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.claude/templates/`. Agents don't load CLAUDE.md — all context must be in prompt.
+**Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.claude/templates/` and is appended after the agent .md. Agents don't load CLAUDE.md — all context must be in prompt.
 
 **Verification:** Every finding labeled. Every label backed by Read. 100% complete before proceeding. ALL verified actionable findings fixed — via fix-agent if many, directly if few.
 

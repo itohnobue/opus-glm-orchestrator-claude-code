@@ -4,7 +4,7 @@ Mandatory verification before claiming (skip = finding auto-rejected):
 - Before "X has no tests": Grep for test files containing X. Check *Test*.cs, test_*.py, *_test.go etc. Paste count of test methods found
 - Before "X works correctly": quote the exact code that proves it
 - Before "missing protection": search for existing guards (try/catch, validation, decorators) — paste grep results
-- Before CRITICAL/HIGH: trace ALL callers to prove reachable in production; check test files
+- Before CRITICAL/HIGH: check if code path is reachable (grep for callers), but DO NOT suppress findings just because proof is hard — report with confidence level (CONFIRMED / LIKELY / POSSIBLE) instead
 
 Core rules:
 - Read every file BEFORE making claims about it
