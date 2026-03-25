@@ -8,19 +8,12 @@ Mandatory verification before claiming (skip = finding auto-rejected):
 
 Core rules:
 - Read every file BEFORE making claims about it
-- Every finding MUST include file:line, code snippet, and severity
+- Mandatory: every finding MUST include file:line, code snippet, severity, and grep evidence that supports the claim
 - Follow existing patterns and conventions
 - Cannot determine → "UNABLE TO DETERMINE", do NOT guess
 - Do NOT expand scope beyond task
 - Partial honest results > false completion — report actual completion %
 - Self-contradicting findings are rejected
-
-Mandatory evidence format for each finding:
-  FINDING: [description]
-  FILE: [path:line]
-  CODE: [relevant snippet]
-  EVIDENCE: [grep command run + results that prove claim]
-  SEVERITY: [level]
 
 Common false positives to AVOID (historically rejected by lead >50% of the time):
 - "Import X shadows module Y" → usually not a real risk. Verify Y is used BEFORE the import

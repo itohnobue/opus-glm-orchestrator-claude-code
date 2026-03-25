@@ -62,7 +62,7 @@ Evaluate every non-trivial task. Delegation is the default.
 | Small | 2-3 | Few independent subtasks |
 | Full | 3 | Project-wide analysis |
 
-Max 3 agents per stage. If more work is needed, add stages — not more agents. Prefer fewer well-prompted agents over many thin ones.
+Prefer fewer well-prompted agents over many thin ones.
 
 ### Lead Role
 
@@ -73,9 +73,9 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 **Does not:** run test suites, do comprehensive audits unprompted, write substantial code, do deep research. These are agent work.
 
 **Self-check rules (MANDATORY):**
-- 5+ consecutive Read/Grep/Bash calls without spawning = you're doing agent work. STOP and delegate
-- If urgent work truly requires >5 direct turns, justify: `DIRECT WORK: [reason]`
-- Exceptions: planning (skimming files to scope agents) and verification (reading files to check agent claims) both require heavy Read usage — this is allowed
+- Heavy Read/Grep usage for planning and verification is expected and allowed
+- But if you find yourself writing code, running test suites, or doing deep analysis across many files — that's agent work. Delegate it
+- When direct work is truly needed (agent failed, small cleanup): justify with `DIRECT WORK: [reason]`
 
 **Verification vs implementation boundary:**
 - Verification (lead does): Read files, compare to agent claims, label findings, update checklist, write synthesis
@@ -112,10 +112,10 @@ The lead designs the workflow. Typical flow: plan → for each stage: prepare �
 1. Read the plan section for the component
 2. Read the ACTUAL reference source code for the equivalent feature — the plan may have misinterpreted, oversimplified, or missed fields/logic
 3. Compare plan's proposed design against reference reality — fix discrepancies BEFORE spawning
-4. Only spawn agents when 100% confident in the design
+4. Only spawn agents when confident enough to write well-scoped prompts — remaining uncertainty should be captured in MUST ANSWER questions for agents to resolve
 5. Invest time in preparation — perfect prompts produce better results than fast prompts. No time pressure on research.
 
-Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. If the project is unfamiliar, spawn a research agent first. Decompose into stages. Brief user before spawning:
+Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. Brief user before spawning:
 ```
 Plan: [N stages, M total agents]
   Stage 1: [purpose] — [agents] → delivers [what]
@@ -142,8 +142,6 @@ Common dependency patterns to watch: test-writer depends on implementer, fix-age
 
 **Session start:** Clean ALL stale GLM artifacts: `rm -f tmp/glm-plan.md tmp/stage-*-{checklist,synthesis}.md tmp/stage-*-iter-*-synthesis.md tmp/*-log.txt tmp/*-report.md tmp/*-status.txt tmp/*-prompt.txt`
 
-**Scoping pass:** When the change scope is unclear, the lead may spawn 1-2 lightweight agents before writing the formal plan. Scoping agents use `-scope` suffix (e.g., `s1-scope-review`). Their findings inform the plan but MUST be verified before any fixes are applied (see Verification hard rules). Write the formal plan after the scoping pass completes.
-
 **Session boundaries:** If task will likely need >4 stages, plan explicit session splits using the continuation protocol. Long sessions degrade from compaction pressure.
 
 #### Agent Preparation
@@ -151,12 +149,13 @@ Common dependency patterns to watch: test-writer depends on implementer, fix-age
 For each agent in the current stage:
 
 1. Define task with KEY FILES, CONTEXT, SCOPE, `WRITABLE FILES`, and 3-5 `MUST ANSWER:` questions (mandatory — prompts without these are invalid)
-2. Read `.claude/agents/{agent}.md`, trim to task-relevant sections (see Prompts rule below), build prompt per Agent Prompt Template
+2. Read `.claude/agents/{agent}.md`, include in full (see Prompts rule below), build prompt per Agent Prompt Template
 3. Append boilerplate from `.claude/templates/`: quality rules (review or code variant), severity guide (review only), coordination + report format (review or code variant). Replace `{NAME}` placeholder in coordination template
 4. Write to `tmp/{name}-prompt.txt`
-5. **Validate prompt contains ALL:** trimmed agent .md, TASK ASSIGNMENT with MUST ANSWER questions, WRITABLE FILES list, quality rules, severity guide (review only), environment (code only), coordination, report format. Missing ANY = do not spawn
+5. **Validate prompt contains ALL:** full agent .md, TASK ASSIGNMENT with MUST ANSWER questions, WRITABLE FILES list, quality rules, severity guide (review only), environment (code only), coordination, report format. Missing ANY = do not spawn
 6. Match agent type to task: REVIEW → code-reviewer, security-reviewer, architect. CODE → language-pro, debugger
 7. **WRITABLE FILES:** Every code agent prompt MUST include a `WRITABLE FILES:` section listing the exact files/directories the agent may create or modify. Review/audit agents: `WRITABLE FILES: tmp/{NAME}-report.md` (report only, no source modifications)
+8. **Pre-spawn check:** Before spawning code agents, verify the build/test commands work (quick run). For review agents, confirm key files are readable. A 30-second check prevents multi-agent failures from broken environments.
 
 Describe problems and desired behavior — do NOT paste exact fix code unless precision is critical (regex, API signatures, security logic). Name agents with stage prefix: `s1-researcher`, `s2-impl-auth`.
 
@@ -186,7 +185,7 @@ The most critical step. **Every finding must be verified — no exceptions.**
 **c) For EVERY finding:**
 1. **Read** the cited file:line (MANDATORY — no Read = invalid label)
 2. **Compare** to agent's claim (YES/NO/PARTIAL)
-3. **Assess** — LOW/MEDIUM: visual confirmation. HIGH/CRITICAL: trace callers to prove reachable
+3. **Assess** — LOW/MEDIUM: visual confirmation. HIGH/CRITICAL: check if code path is reachable (grep for callers), report with confidence level (CONFIRMED/LIKELY/POSSIBLE)
 4. **Label:** VERIFIED / REJECTED (reason) / DOWNGRADED (correct severity) / UNABLE TO VERIFY
 5. **Update** checklist on disk. Checkpoint every ~5 findings
 
@@ -195,7 +194,7 @@ The most critical step. **Every finding must be verified — no exceptions.**
 - 100% labeled before proceeding — no unlabeled findings
 - If >30% rejected → flag report as unreliable
 - After compaction during verification: first action = read checklist, continue from first unlabeled row
-- No fixes without verification — even from scoping passes or informal agent runs. Every finding the lead acts on must have a Read-backed label first
+- No fixes without verification — every finding the lead acts on must have a Read-backed label first
 - Valid labels are ONLY: VERIFIED / REJECTED (reason) / DOWNGRADED (correct severity) / UNABLE TO VERIFY. No other labels (e.g., "PLAUSIBLE", "NOT VERIFIED") are permitted
 
 **d) Fix ALL verified actionable findings** regardless of severity. Deduplicate across agents. Don't defer fixable issues.
@@ -205,7 +204,7 @@ The most critical step. **Every finding must be verified — no exceptions.**
 1. Write `tmp/stage-N-synthesis.md` — verified results, decisions, context for next stage
 2. If scope changed from original plan, update `tmp/glm-plan.md` with actual stages and revised goals
 3. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt`
-4. Next stage prompts include synthesis as `PRIOR CONTEXT:` section
+4. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines
 5. Never re-do verified work unless evidence shows it was wrong
 
 **Iterative stages:** Between iterations, follow the Iterative Convergence protocol below — skip steps 1-5 until convergence is reached. On convergence, write final stage synthesis (step 1) and resume normal between-stages flow (steps 2-5).
@@ -243,14 +242,14 @@ After final stage:
 
 ### Agent Prompt Template
 
-Prompt = trimmed agent `.md` + task-specific sections + boilerplate from templates:
+Prompt = full agent `.md` + task-specific sections + boilerplate from templates:
 
 ```
 You are a GLM agent named {NAME}.
 
-IMPORTANT: Think deeply and verify rigorously. For every finding or action, invest your reasoning in PROVING it correct — trace logic step by step, verify assumptions against actual code, search for existing guards before claiming they're missing. Depth of verification matters more than number of findings. One well-proven finding is worth more than ten unverified ones.
+Before claiming something is missing or broken — grep for existing guards, handlers, or implementations first.
 
-{Task-relevant sections of .claude/agents/{agent}.md — see Prompts rule}
+{Full .claude/agents/{agent}.md — see Prompts rule}
 
 --- TASK ASSIGNMENT ---
 
@@ -266,18 +265,18 @@ YOUR TASK: {KEY FILES, CONTEXT, SCOPE, MUST ANSWER questions}
 
 WRITABLE FILES: {explicit list of files/directories this agent may create or modify — everything else is READ-ONLY}
 
-{cat .claude/templates/quality-rules-review.txt OR quality-rules-code.txt}
+{cat .claude/templates/coordination-review.txt OR coordination-code.txt — replace {NAME}}
 
 {cat .claude/templates/severity-guide.txt — REVIEW/audit tasks only}
 
-{cat .claude/templates/coordination-review.txt OR coordination-code.txt — replace {NAME}}
+{cat .claude/templates/quality-rules-review.txt OR quality-rules-code.txt}
 ```
 
-| Task Type | Quality Rules | Severity Guide | Coordination |
-|-----------|--------------|----------------|--------------|
-| Review/audit | quality-rules-review.txt | severity-guide.txt | coordination-review.txt |
-| Code/refactor | quality-rules-code.txt | — | coordination-code.txt |
-| Research | quality-rules-review.txt | — | coordination-review.txt |
+| Task Type | Coordination | Severity Guide | Quality Rules |
+|-----------|--------------|----------------|---------------|
+| Review/audit | coordination-review.txt | severity-guide.txt | quality-rules-review.txt |
+| Code/refactor | coordination-code.txt | — | quality-rules-code.txt |
+| Research | coordination-review.txt | — | quality-rules-review.txt |
 
 Boilerplate templates live in `.claude/templates/`. Lead only writes the unique parts (agent .md selection + TASK ASSIGNMENT). Templates are `cat`-ed into the prompt file verbatim.
 
@@ -416,9 +415,7 @@ memory.sh session clear --all             # ALL sessions
 
 ### Checkpoints
 
-Save after every significant step. One active checkpoint (delete previous first). Under 500 chars. Opus-GLM sessions: use the checkpoint protocol in the Opus-GLM section.
-
-After compaction: run `memory.sh session show` immediately to restore state. One checkpoint at a time. Always include DONE and NEXT.
+See the Checkpoints & Recovery protocol in the Opus-GLM section above.
 
 ### Multi-Session
 
