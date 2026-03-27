@@ -6,7 +6,7 @@
 # model mappings, and binary discovery. Stdin piping bypasses the Windows
 # batch parser — no issues with special characters in prompts.
 #
-# Model is hardcoded to sonnet — no model selection allowed.
+# Model defaults to opus (GLM-5.1). Override with -m sonnet for GLM-4.7.
 # Agents run until completion — no max-turns limit.
 #
 # Output format: stream-json for real-time log monitoring.
@@ -18,6 +18,7 @@
 # Arguments:
 #   -n, --name         Agent name (log: tmp/{NAME}-log.txt)
 #   -f, --prompt-file  Path to the prompt text file
+#   -m, --model        Model: opus (default, GLM-5.1) | sonnet (GLM-4.7)
 #
 # Output (stdout):
 #   SPAWNED|name|pid|log_file
@@ -38,12 +39,13 @@ command -v "$GLM_WRAPPER" &>/dev/null || \
   { echo "ERROR: $GLM_WRAPPER not found in PATH. Install claude-glm first." >&2; exit 1; }
 
 # ── Parse arguments ──
-NAME="" PROMPT_FILE=""
+NAME="" PROMPT_FILE="" MODEL="opus"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -n|--name)        NAME="$2";        shift 2 ;;
     -f|--prompt-file) PROMPT_FILE="$2"; shift 2 ;;
+    -m|--model)       MODEL="$2";       shift 2 ;;
     -h|--help)        sed -n '2,/^$/p' "$0" | sed 's/^# \?//'; exit 0 ;;
     *) echo "ERROR: Unknown arg: $1" >&2; exit 1 ;;
   esac
@@ -65,12 +67,12 @@ STATUS="tmp/${NAME}-status.txt"
 unset CLAUDECODE 2>/dev/null || true
 
 # ── Spawn: pipe prompt file → claude-glm wrapper ──
-# Model: sonnet — hardcoded, no override allowed
+# Model: configurable via -m flag (default: opus/GLM-5.1)
 # No max-turns — agents run until completion
 cat "$PROMPT_FILE" | "$GLM_WRAPPER" \
   -p \
   --verbose \
-  --model sonnet \
+  --model "$MODEL" \
   --output-format stream-json \
   --dangerously-skip-permissions \
   > "$LOG" 2>&1 &
