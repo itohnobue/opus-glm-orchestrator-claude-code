@@ -76,7 +76,7 @@ Each agent is a `.md` file with a persona, focus area, approach, and safety rule
 |----------|--------|----------|
 | **Languages** | 25+ | python-pro, typescript-pro, golang-pro, rust-pro, java-pro, c-pro, cpp-pro |
 | **Review** | 8 | code-reviewer, security-reviewer, go-reviewer, python-reviewer, database-reviewer |
-| **Architecture** | 12 | architect, backend-architect, cloud-architect, database-architect, microservices-architect |
+| **Architecture** | 11 | backend-architect, cloud-architect, database-architect, microservices-architect |
 | **DevOps** | 10 | deployment-engineer, kubernetes-architect, terraform-pro, sre-engineer, devops-troubleshooter |
 | **Frontend** | 8 | react-pro, nextjs-pro, vue-pro, frontend-developer, ui-designer, ux-designer |
 | **Data** | 6 | data-scientist, data-engineer, ml-engineer, database-optimizer, sql-pro, postgres-pro |

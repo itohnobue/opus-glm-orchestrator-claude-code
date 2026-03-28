@@ -1,4 +1,4 @@
-# Agent Directory (109 agents)
+# Agent Directory (108 agents)
 
 Quick reference for agent selection. Pick the MOST specialized agent for the task — domain-specific checklists and anti-patterns only work when the agent matches the domain.
 
@@ -48,7 +48,6 @@ Quick reference for agent selection. Pick the MOST specialized agent for the tas
 
 | File | Agent | Use When |
 |------|-------|----------|
-| architect.md | Software architect | System design, scalability, ADRs |
 | backend-architect.md | Backend architect | API architecture, database schema design |
 | api-designer.md | API designer | REST/GraphQL API design, standards |
 | graphql-architect.md | GraphQL architect | Schema architecture, federation, subscriptions |
