@@ -229,7 +229,7 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
 3. Convergence = 2 consecutive iterations with no new meaningful output. Write final stage synthesis and move on
 4. Lead SHOULD vary approach between iterations — different agents, focus areas, or angles — to avoid blind spots. Running identical agents repeatedly is wasteful
 5. Lead can adjust agent count and type between iterations based on what prior iterations revealed
-6. Lead sets max iterations per stage (default 3, use 5 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
+6. Lead sets max iterations per stage (default 2, use 3 for high-stakes security/production audits). If cap hit without convergence → synthesize what's known, note "convergence not reached" in delivery, proceed
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
 
 #### Delivery
