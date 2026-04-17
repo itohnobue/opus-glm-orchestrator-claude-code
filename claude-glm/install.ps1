@@ -238,7 +238,7 @@ function Main {
     Write-Host ""
 
     $apiKey = $null
-    while ($true) {
+    :KeyLoop while ($true) {
         $secureKey = Read-Host "  Enter your Z.ai API key" -AsSecureString
         $apiKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
             [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
@@ -251,6 +251,21 @@ function Main {
 
         if (Test-ApiKey -ApiKey $apiKey) {
             break
+        }
+
+        # Offer to continue despite validation failure
+        Write-Host ""
+        $continueAnswer = $null
+        while ($true) {
+            $continueAnswer = Read-Host "  Continue installation anyway? [y/n]"
+            if ($continueAnswer -match '^[yY]$|^[yY][eE][sS]$') {
+                Write-Warn "Continuing with unvalidated API key"
+                break KeyLoop
+            } elseif ($continueAnswer -match '^[nN]$|^[nN][oO]$') {
+                break
+            } else {
+                Write-Host "  Please enter y or n."
+            }
         }
 
         Write-Host ""

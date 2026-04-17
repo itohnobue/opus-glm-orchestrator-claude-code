@@ -111,6 +111,26 @@ main() {
       break
     fi
 
+    # Offer to continue despite validation failure
+    printf '\n'
+    while true; do
+      printf '  Continue installation anyway? [y/n]: '
+      local continue_choice
+      read -r continue_choice
+      case "$continue_choice" in
+        [yY]|[yY][eE][sS])
+          warn "Continuing with unvalidated API key"
+          break 2
+          ;;
+        [nN]|[nN][oO])
+          break
+          ;;
+        *)
+          printf '  Please enter y or n.\n'
+          ;;
+      esac
+    done
+
     printf '\n'
     printf '  Try again or press Ctrl+C to cancel.\n\n'
   done
