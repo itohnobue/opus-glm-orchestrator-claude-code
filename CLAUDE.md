@@ -388,7 +388,8 @@ For any internet search:
 
 1. Read agent instructions: `.claude/agents/web-searcher.md`
 2. **ALWAYS** use `./.claude/tools/web_search.sh "query"` (or `.claude/tools/web_search.bat` on Windows). **NEVER use the built-in WebSearch tool** — all searches must go through the custom tool
-   - **Multiple queries: combine into one call** — `web_search.sh "query1" "query2" "query3" -s 10` (parallel, cross-query URL dedup)
+   - **One query per call** — run each query as a separate `web_search.sh` invocation. Never combine multiple queries into a single call. Run calls **sequentially** (one after another, not in parallel) to avoid hitting API rate limits
+   - **Always use default options** — never add `-s`, `--max-results`, or any result-limiting flags. Let the tool use its built-in defaults
    - **Scientific queries: ALWAYS add `--sci`** for CS, physics, math, engineering, materials science, astronomy, or any non-medical academic topic. Enables: arXiv + OpenAlex.
    - **Medical queries: ALWAYS add `--med`** for medicine, clinical trials, pharmacology, biomedical, genetics, neuroscience, epidemiology, or any health/life science topic. Enables: PubMed + Europe PMC + OpenAlex.
    - **Tech queries: ALWAYS add `--tech`** for software development, DevOps, IT infrastructure, programming, startups, or any tech industry topic. Enables: Hacker News + Stack Overflow + Dev.to + GitHub.
