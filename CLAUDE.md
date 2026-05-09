@@ -15,7 +15,24 @@ Agents folder: `.claude/agents/`. Use agents for all non-trivial subtasks — co
 - DO NOT use the Task tool for agents — use in-session loading (Exception: Opus-GLM uses spawn-glm.sh)
 - Agent instructions are TEMPORARY — apply to current subtask only, discard after
 
-**Discovery:** Glob `.claude/agents/*.md` to list, Grep by keyword. Prefer specialized over general agents.
+**Discovery:** Do FULL read of `.claude/agents/INDEX.md` for the full categorized agent directory (109 agents grouped by domain). Pick the MOST specialized agent — domain-specific checklists and anti-patterns only work when the agent matches the domain. Glob `.claude/agents/*.md` for ad-hoc lookup, grep by keyword.
+
+**Categories** (rough counts — see INDEX.md for the authoritative directory):
+
+| Category | Count | Examples |
+|----------|-------|----------|
+| Language Implementation | 22 | python-pro, golang-pro, rust-pro, typescript-pro |
+| Web Frameworks | 10 | react-pro, nextjs-pro, django-pro, fastapi-pro |
+| Architecture & Design | 9 | backend-architect, api-designer, microservices-architect |
+| DevOps & Infrastructure | 11 | devops-engineer, kubernetes-architect, cloud-architect |
+| Security | 6 | security-reviewer, penetration-tester, threat-modeling-pro |
+| Database | 5 | postgres-pro, sql-pro, database-architect |
+| Testing & Quality | 5 | code-reviewer, tdd-guide, test-automator |
+| AI & ML | 5 | ai-engineer, ml-engineer, prompt-engineer |
+| Frontend & Mobile | 5 | frontend-developer, ios-pro, ui-designer |
+| Documentation | 7 | documentation-pro, technical-writer, docs-architect |
+| Incident & Troubleshooting | 4 | incident-responder, debugger, devops-troubleshooter |
+| Specialized | 20 | build-engineer, cli-developer, product-manager, web-searcher, etc. |
 
 ### Request Workflow
 
@@ -24,6 +41,8 @@ Agents folder: `.claude/agents/`. Use agents for all non-trivial subtasks — co
 3. **Evaluate GLM:** If any Opus-GLM delegate trigger matches → enter GLM flow (skip 4-5)
 4. **Plan:** For multi-step tasks: `memory.sh session add plan "..."`
 5. **Decompose:** List subtasks, map each to best agent, report to user
+
+**CRITICAL — Plan Display Rule:** Before spawning ANY agent you MUST output the full stage plan as text to the user — see Workflow → Planning for the exact format. Writing the plan to `tmp/glm-plan.md` does NOT replace showing it. Display first, then proceed.
 
 **Agent selection:** Most specialized wins (e.g., postgres-pro over database-optimizer). Split hybrid tasks into subtasks with different agents.
 
@@ -44,6 +63,8 @@ Dynamic orchestration where Opus delegates work to GLM agents. Evaluates every t
 
 Delegation is the default. Evaluate EVERY task before starting.
 
+**Why delegation produces better results:** A specialist agent with a dedicated context window focused exclusively on one domain will find issues you would miss while context-switching between multiple concerns. For most non-trivial work, delegation maximizes correctness by giving each problem domain undivided analytical attention.
+
 **Handle directly ONLY when ALL of these are true:**
 - You already have full context (no discovery needed)
 - Single domain, single concern
@@ -56,6 +77,11 @@ Delegation is the default. Evaluate EVERY task before starting.
 - Task has natural subtask boundaries that could run in parallel
 - Independent parallelizable subtasks
 - Production checks, security audits, code reviews
+- Large refactors (5+ files) or deep research
+- Would need >10 lead turns of direct work
+- Analysis of >200 lines of code
+
+When a task has multiple independent angles (review + cross-check, multi-file refactor, audit + test review), spawn 2-3 agents in parallel within a SINGLE stage. Sequential stages are ONLY correct when the next stage actually consumes the previous stage's verified output. **Default: fan out within a stage; sequence only when there's a real dependency.** More coverage finds more issues — fan-out (parallel agents) and convergence iterations are both ways to add coverage.
 
 Prefer fewer well-prompted agents over many thin ones.
 
@@ -67,10 +93,15 @@ The lead is an **autonomous orchestrator**, not a developer doing hands-on work.
 
 **Does not:** run test suites, do comprehensive audits unprompted, write substantial code, do deep research. These are agent work.
 
-**Self-check rules (MANDATORY):**
+**Lead success metrics:**
+- **Success:** Decomposable subtasks went to specialists. Your context stayed clean for coordination. Findings were verified. Direct work, when used, was justified and proportionate.
+- **Failure:** You did substantial work an agent should have done. You read raw domain data that would have been better isolated in a specialist's context. You produced analysis without verification.
+
+**Self-check rules (MANDATORY) — run before working on ANY subtask:**
 - Heavy Read/Grep usage for planning and verification is expected and allowed
-- But if you find yourself writing code, running test suites, or doing deep analysis across many files — that's agent work. Delegate it
-- When direct work is truly needed (agent failed, small cleanup): justify with `DIRECT WORK: [reason]`
+- If a specialized agent in `.claude/agents/INDEX.md` matches the subtask domain → **SPAWN it.** Don't reproduce its work yourself
+- If the subtask requires writing code, running test suites, or deep analysis across many files → that's agent work. Delegate it via `spawn-glm.sh` (see Rules → Task tool prohibition for the absolute rule)
+- When direct work is truly needed (agent failed, small cleanup, trivial single-domain task with full context already): justify with `DIRECT WORK: [reason]`
 
 **Verification vs implementation boundary:**
 - Verification (lead does): Read files, compare to agent claims, label findings, update checklist, write synthesis
@@ -110,14 +141,33 @@ The lead designs the workflow. Typical flow: plan → for each stage: prepare �
 4. Only spawn agents when confident enough to write well-scoped prompts — remaining uncertainty should be captured in MUST ANSWER questions for agents to resolve
 5. Invest time in preparation — perfect prompts produce better results than fast prompts. No time pressure on research.
 
-Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. Brief user before spawning:
+Research enough to write well-scoped prompts — skim files (structure, function names, imports, sizes), understand project layout, identify the right agents. Don't trace logic chains or do deep analysis — that's agent work. **When scope is unclear, start with one or more research stages before implementation.** Spawning research agents (even iteratively to convergence) is encouraged — thorough research almost always produces better results in later stages. Decompose into stages. **ALWAYS output the full plan to the user before spawning any agents:**
 ```
 Plan: [N stages, M total agents]
-  Stage 1: [purpose] — [agents] → delivers [what]
-  Stage 2: [purpose] — [agents, batch 1: A,B | batch 2: C] → delivers [what] [iterative] (discretionary)
-  Stage 3: [purpose] — uses Stage 2 output → delivers [what] [iterative] (mandatory)
+  Stage 1: [purpose] — 3 agents in parallel → delivers [what]
+    Agent A: [subtask] — agent type
+    Agent B: [different subtask] — agent type
+    Agent C: [third subtask] — agent type
+  Stage 2: [purpose] — uses Stage 1 output — 2 agents in parallel → delivers [what] [iterative] (discretionary)
+    Agent A: [subtask] — agent type
+    Agent B: [subtask] — agent type
+  Stage 3: [purpose] — uses Stage 2 output — 1 agent → delivers [what] [iterative] (mandatory)
 ```
-Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. Do not wait for the user to ask.
+Iterative stages MUST be marked with `[iterative]` in the brief. Mark `(mandatory)` vs `(discretionary)`. **Do NOT wait for user approval — output the plan and proceed immediately.**
+
+**Delegation mapping (MANDATORY in every plan):** During planning you MUST answer:
+1. What subtasks exist? (list each one)
+2. Which agent handles each subtask? (map agent name to subtask — consult `.claude/agents/INDEX.md`)
+3. Which subtasks, if any, do you handle directly? (justify against the Self-check rules above)
+
+Answer these explicitly in your plan. If a subtask is unassigned ("I'll do it myself") without justification, stop and find the right agent. (Inter-subtask dependencies are handled separately by the Dependency analysis step below.)
+
+**Stage decomposition rule (MANDATORY):** Before finalising the plan, look at adjacent stages. **If stage N+1 does NOT consume stage N's verified output — they're independent — MERGE them into a single stage with parallel agents.** Sequential stages are only correct when the next stage actually needs the previous stage's verified findings as `PRIOR CONTEXT:`. The single most common planning mistake is proposing N stages with 1 agent each when those stages could run in parallel as 1 stage with N agents.
+
+  - **Wrong:** Stage 1 = code review (1 agent), Stage 2 = test review (1 agent), Stage 3 = security review (1 agent) — all three look at the same diff independently, no consumption between them
+  - **Right:** Stage 1 = code-review + test-review + security-review running as 3 agents in parallel within one stage
+
+If you find yourself proposing a multi-stage plan with 1 agent each, ask: "Does each next stage actually consume the previous stage's verified output?" If no, collapse them into one stage with parallel agents.
 
 Write full plan to `tmp/glm-plan.md`. Checkpoint.
 
@@ -239,6 +289,8 @@ The most critical step. **Every finding must be verified — no exceptions.**
 3. Checkpoint. Clean up: `rm -f tmp/sN-*-prompt.txt tmp/sN-*-task.txt`
 4. Next stage prompts include synthesis as `PRIOR CONTEXT:` section. PRIOR CONTEXT should contain only factual project context the next stage needs: what was discovered, what was decided, what constraints exist, what was already fixed. Do NOT include verification process details, rejected findings, or behavioral instructions — these compete with the agent .md. Target under 50 lines
 5. Never re-do verified work unless evidence shows it was wrong
+6. Never skip a planned stage without explicitly marking it in `tmp/glm-plan.md` as `SKIPPED` with a reason. A stage is only complete when its agents have been spawned, waited, and findings verified.
+7. After writing synthesis, read `tmp/glm-plan.md` to confirm the next stage. If the plan has remaining stages, execute them — do not deliver early unless remaining stages are explicitly marked SKIPPED.
 
 **Iterative stages:** Between iterations, follow the Iterative Convergence protocol below — skip steps 1-5 until convergence is reached. On convergence, write final stage synthesis (step 1) and resume normal between-stages flow (steps 2-5).
 
@@ -264,6 +316,8 @@ Some stages benefit from repeated runs until agents stop producing new meaningfu
 7. **Mandatory convergence is mechanical, not discretionary.** Mandatory iterative stages CANNOT be declared converged after a single iteration, regardless of lead assessment. An iteration that produces ANY actionable finding is not empty — fix the issue, then run the next iteration. Only 2 consecutive empty iterations satisfy convergence
 
 #### Delivery
+
+**Before delivery:** Read `tmp/glm-plan.md`. Confirm every planned stage is complete or explicitly marked SKIPPED with justification. A stage silently skipped = not delivered yet. Execute it or update the plan.
 
 After final stage:
 - **Reviews/audits:** write report to `tmp/` with verified findings, rejected items, gaps
@@ -369,7 +423,15 @@ For tasks exceeding a single session:
 
 ### Rules
 
+**Quality over speed — ALWAYS.** Never rush, never cut corners, never try to finish faster. Slow, thorough, methodical work produces quality. Speed produces bugs. Prefer more stages, more agents, more verification over shorter timelines. There is no deadline. The only measure of success is production-ready, bug-free code.
+
 **Limits:** Max 3 agents per stage (per iteration for iterative stages). Need more coverage? Add stages, not agents. Agents run until done (no turn limit). One task per agent. Respawn naming: `-r2`, `-r3`. No two agents edit same file within a stage (read overlap OK). Balance workload — each agent should cover roughly equal scope. **Iteration naming:** `s2i1-reviewer`, `s2i2-researcher` (stage 2, iteration 1/2). Respawn within iteration: `s2i1-reviewer-r2`.
+
+**Task tool prohibition (MANDATORY — single most important rule):** Agent delegation in this orchestrator happens ONLY via `spawn-glm.sh`. The `Task` tool with its `subagent_type` parameter is FORBIDDEN — never call it, regardless of the use case (exploration, code review, implementation, research, anything).
+
+The Task tool's built-in `subagent_type` list happens to share names with our agent `.md` files in `.claude/agents/` (`code-reviewer`, `ios-pro`, `swift-pro`, etc.) — these are TWO DIFFERENT THINGS. The Task tool ships a separate sub-agent runtime that bypasses the `spawn-glm.sh` pipeline, verification, report formats, and quality rules. Our agent `.md` files are reached ONLY by passing `-a AGENT_NAME` to `assemble-prompt.sh` and then spawning via `spawn-glm.sh`.
+
+If you catch yourself about to call `Task(subagent_type=...)` — stop, use `spawn-glm.sh` instead.
 
 **Prompts:** Include the FULL agent `.md` file — agents are optimized and every section earns its place. Do NOT trim or skip sections. Boilerplate (quality rules, severity guide, coordination, report format) comes from `.claude/templates/` and is appended after the agent .md. Agents don't load CLAUDE.md — all context must be in prompt.
 
